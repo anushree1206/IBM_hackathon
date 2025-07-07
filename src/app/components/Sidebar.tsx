@@ -4,19 +4,24 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const navLinks = [
-  { name: "Dashboard", href: "/", badge: null },
+  { name: "Dashboard", href: "/dashboard", badge: null },
   { name: "Compliance Alerts", href: "/compliance-alerts", badge: 3 },
   { name: "Carbon Analysis", href: "/carbon-analysis", badge: null },
   { name: "Report Generator", href: "/report-generator", badge: null },
   { name: "Reports", href: "/reports", badge: null },
   { name: "Regulatory Scanner", href: "/regulatory-scanner", badge: null },
+  { name: "Compliance Risk Calculator", href: "/compliance-risk-calculator", badge: null },
+  { name: "Cost-Benefit Analysis", href: "/cost-benefit-analysis", badge: null },
+  { name: "What-If Calculator", href: "/what-if-calculator", badge: null },
 ];
 
 export default function Sidebar() {
   const pathname = usePathname();
   return (
     <aside className="bg-[#151c27] text-white w-64 min-h-screen flex flex-col py-6 px-4 shadow-lg">
-      <div className="text-2xl font-bold mb-10 tracking-tight">CarbonGuard <span className="text-xs font-normal text-gray-400 ml-1">Insight</span></div>
+      <Link href="/">
+        <div className="text-2xl font-bold mb-10 tracking-tight cursor-pointer">CarbonGuard <span className="text-xs font-normal text-gray-400 ml-1"></span></div>
+      </Link>
       <nav className="flex-1">
         <ul className="space-y-2">
           {navLinks.map((link) => {
