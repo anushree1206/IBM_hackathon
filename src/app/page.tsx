@@ -1,85 +1,20 @@
-import React from "react";
-import Sidebar from "./components/Sidebar";
-import Topbar from "./components/Topbar";
-import StatCards from "./components/StatCards";
-import BarChart from "./components/BarChart";
-import ComplianceTable from "./components/ComplianceTable";
+import Link from 'next/link';
 
-const stats = [
-  {
-    title: "Carbon Footprint",
-    value: "1,250 tCO₂e",
-    icon: "🌱",
-    change: "+2.1%",
-    color: "bg-green-600/80",
-  },
-  {
-    title: "Risk Score",
-    value: "Low",
-    icon: "⚠️",
-    change: "-1.3%",
-    color: "bg-yellow-500/80",
-  },
-  {
-    title: "Regulatory Scanner",
-    value: "Compliant",
-    icon: "🛡️",
-    change: "0%",
-    color: "bg-blue-600/80",
-  },
-];
-
-const barData = [
-  { dept: "Operations", value: 400 },
-  { dept: "IT", value: 250 },
-  { dept: "HR", value: 100 },
-  { dept: "Finance", value: 200 },
-  { dept: "R&D", value: 300 },
-];
-
-const tableData = [
-  {
-    activity: "Quarterly Audit",
-    compliance: "Passed",
-    priority: "High",
-  },
-  {
-    activity: "Policy Update",
-    compliance: "Pending",
-    priority: "Medium",
-  },
-  {
-    activity: "Incident Review",
-    compliance: "Failed",
-    priority: "Critical",
-  },
-  {
-    activity: "Training",
-    compliance: "Passed",
-    priority: "Low",
-  },
-];
-
-const priorityColors: Record<string, string> = {
-  High: "bg-orange-500",
-  Medium: "bg-yellow-400",
-  Critical: "bg-red-600",
-  Low: "bg-green-500",
-};
-
-export default function Dashboard() {
+export default function LandingPage() {
   return (
-    <div className="flex min-h-screen bg-[#111827] text-white font-sans">
-      <Sidebar />
-      <div className="flex-1 flex flex-col">
-        <Topbar />
-        <main className="flex-1 p-8 bg-[#111827]">
-          <StatCards />
-          <div className="flex flex-col md:flex-row gap-8 mt-2">
-            <BarChart />
-            <ComplianceTable />
-          </div>
-        </main>
+    <div
+      className="relative h-screen w-full flex items-center justify-center text-center bg-cover bg-center"
+      style={{ backgroundImage: "url('/nature-bg.jpeg')" }}
+    >
+      <div className="absolute inset-0 bg-black opacity-50"></div>
+      <div className="relative z-10">
+        <h1 className="text-5xl md:text-7xl font-bold text-white mb-4">Welcome to CarbonGuard</h1>
+        <p className="text-lg md:text-xl text-white mb-8">Your partner in navigating the complexities of carbon compliance.</p>
+        <Link href="/dashboard">
+          <button className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg text-lg transition duration-300 cursor-pointer">
+            Get Started
+          </button>
+        </Link>
       </div>
     </div>
   );

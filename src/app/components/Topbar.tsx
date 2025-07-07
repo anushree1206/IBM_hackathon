@@ -2,7 +2,7 @@ import React from "react";
 
 export default function Topbar() {
   return (
-    <header className="flex items-center justify-between bg-[#192132] px-8 py-4 shadow-sm rounded-b-xl">
+    <header className="flex items-center justify-between px-8 py-4 shadow-sm rounded-b-xl">
       <div />
       <div className="flex items-center gap-4">
         <select className="bg-[#22304a] text-white px-3 py-1 rounded-lg text-sm font-medium focus:outline-none">
