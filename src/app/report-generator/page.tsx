@@ -2,7 +2,7 @@ import React from "react";
 
 const ReportGeneratorForm = () => (
   <div className="bg-gray-800 p-8 rounded-lg w-full max-w-4xl mx-auto">
-    <h2 className="text-2xl font-bold mb-6 text-white">Report Generator</h2>
+    
     <form>
       <div className="mb-4">
         <label htmlFor="reportType" className="block text-sm font-medium mb-2 text-gray-300">Report Type</label>
@@ -38,8 +38,8 @@ export default function ReportGenerator() {
   return (
     <div className="flex min-h-screen bg-[#111827] text-white font-sans">
       <div className="flex-1 flex flex-col">
-        <main className="flex-1 p-4 sm:p-6 md:p-8 bg-[#111827] flex flex-col items-center justify-center">
-          <h1 className="text-2xl font-bold mb-8 text-white">Report Generator</h1>
+        <main className="flex-1 p-4 sm:p-6 md:p-8 bg-[#111827] flex flex-col items-center justify-start">
+          <h1 className="text-2xl font-bold mb-4 text-white">Report Generator</h1>
           <ReportGeneratorForm />
         </main>
       </div>
