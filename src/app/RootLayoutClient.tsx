@@ -2,6 +2,7 @@
 import Sidebar from "./components/Sidebar";
 import Topbar from "./components/Topbar";
 import { useState } from "react";
+import { usePathname } from "next/navigation";
 
 export default function RootLayoutClient({
   children,
@@ -9,6 +10,12 @@ export default function RootLayoutClient({
   children: React.ReactNode;
 }>) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const pathname = usePathname();
+  
+  // Don't show sidebar and topbar on landing page
+  if (pathname === "/") {
+    return <>{children}</>;
+  }
 
   return (
     <div className="flex min-h-screen bg-[#111827] text-white font-sans">
