@@ -83,7 +83,7 @@ export default function Reports() {
   return (
     <div className="flex min-h-screen bg-[#111827] text-white font-sans">
       <div className="flex-1 flex flex-col">
-        <main className="flex-1 p-4 sm:p-6 md:p-8 bg-[#111827] flex items-center justify-start">
+        <main className="flex-1 p-4 sm:p-6 md:p-8 bg-[#111827] flex flex-col justify-start">
           <ReportsList />
         </main>
       </div>
