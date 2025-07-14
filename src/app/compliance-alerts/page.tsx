@@ -1,6 +1,4 @@
 "use client";
-import Sidebar from "../components/Sidebar";
-import Topbar from "../components/Topbar";
 import AlertCard from "../components/AlertCard";
 import React, { useState } from "react";
 import { useRegulatoryData } from "../components/RegulatoryDataContext";
@@ -41,10 +39,8 @@ export default function ComplianceAlertsPage() {
 
   return (
     <div className="flex min-h-screen bg-[#111827] text-white font-sans">
-      <Sidebar />
       <div className="flex-1 flex flex-col">
-        <Topbar />
-        <main className="flex-1 p-8 bg-[#111827]">
+        <main className="flex-1 p-4 sm:p-6 md:p-8 bg-[#111827]">
           <div className="max-w-3xl mx-auto">
             <h1 className="text-2xl font-bold mb-2">Compliance Alerts</h1>
             <div className="text-gray-400 mb-6">Review and address active compliance alerts for your organization, dynamically generated from your uploaded data.</div>
@@ -66,4 +62,4 @@ export default function ComplianceAlertsPage() {
       </div>
     </div>
   );
-} 
+}

@@ -1,6 +1,4 @@
 import React from "react";
-import Sidebar from "../components/Sidebar";
-import Topbar from "../components/Topbar";
 
 const ScenarioInput = () => (
   <div className="bg-gray-800 p-6 rounded-lg mb-8">
@@ -54,10 +52,8 @@ const SummaryOutput = () => (
 export default function WhatIfCalculator() {
   return (
     <div className="flex min-h-screen bg-[#111827] text-white font-sans">
-      <Sidebar />
       <div className="flex-1 flex flex-col">
-        <Topbar />
-        <main className="flex-1 p-8 bg-[#111827]">
+        <main className="flex-1 p-4 sm:p-6 md:p-8 bg-[#111827]">
           <h1 className="text-2xl font-bold mb-8">What-If Scenario Calculator</h1>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <div>

@@ -1,19 +1,7 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import Papa from "papaparse";
+import React from "react";
 import { useRegulatoryData } from "./RegulatoryDataContext";
-
-interface EmissionData {
-  Industry: string;
-  Revenue: number;
-  Emissions: number;
-  NumFacilities: number;
-  CO2ReductionTarget: number;
-  Timeline: number;
-  StrictnessLevel: number;
-  ComplianceCost: number;
-}
 
 export default function StatCards() {
   const { data } = useRegulatoryData();

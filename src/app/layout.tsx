@@ -1,7 +1,11 @@
+"use client";
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { RegulatoryDataProvider } from "./components/RegulatoryDataContext";
+import Sidebar from "./components/Sidebar";
+import Topbar from "./components/Topbar";
+import { useState } from "react";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -23,13 +27,23 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-[#111827]`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-[#111827] min-h-screen flex flex-col`}
       >
         <RegulatoryDataProvider>
-          {children}
+          <div className="flex min-h-screen bg-[#111827] text-white font-sans">
+            <Sidebar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
+            <div className="flex-1 flex flex-col">
+              <Topbar setSidebarOpen={setSidebarOpen} />
+              <main className="flex-1 p-4 sm:p-6 md:p-8 bg-[#111827]">
+                {children}
+              </main>
+            </div>
+          </div>
         </RegulatoryDataProvider>
       </body>
     </html>

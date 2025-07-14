@@ -3,7 +3,7 @@ import Link from 'next/link';
 export default function LandingPage() {
   return (
     <div
-      className="relative h-screen w-full flex items-center justify-center text-center bg-cover bg-center"
+      className="relative min-h-screen w-full flex items-center justify-center text-center bg-cover bg-center overflow-auto"
       style={{ backgroundImage: "url('/nature-bg.jpeg')" }}
     >
       <div className="absolute inset-0 bg-black opacity-50"></div>

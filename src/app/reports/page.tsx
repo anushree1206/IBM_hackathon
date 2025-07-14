@@ -1,6 +1,4 @@
 import React from "react";
-import Sidebar from "../components/Sidebar";
-import Topbar from "../components/Topbar";
 
 const reportsData = [
   {
@@ -65,10 +63,8 @@ const ReportsList = () => (
 export default function Reports() {
   return (
     <div className="flex min-h-screen bg-[#111827] text-white font-sans">
-      <Sidebar />
       <div className="flex-1 flex flex-col">
-        <Topbar />
-        <main className="flex-1 p-8 bg-[#111827] flex items-center justify-center">
+        <main className="flex-1 p-4 sm:p-6 md:p-8 bg-[#111827] flex items-center justify-center">
           <ReportsList />
         </main>
       </div>

@@ -1,6 +1,4 @@
 import React from "react";
-import Sidebar from "../components/Sidebar";
-import Topbar from "../components/Topbar";
 
 // Placeholder components for the new charts and cards
 const TotalAnnualEmissionsCard = () => (
@@ -45,10 +43,8 @@ const MonthlyEmissionsTrendChart = () => (
 export default function CarbonAnalysis() {
   return (
     <div className="flex min-h-screen bg-[#111827] text-white font-sans">
-      <Sidebar />
       <div className="flex-1 flex flex-col">
-        <Topbar />
-        <main className="flex-1 p-8 bg-[#111827]">
+        <main className="flex-1 p-4 sm:p-6 md:p-8 bg-[#111827]">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <TotalAnnualEmissionsCard />
             <EmissionsIntensityCard />

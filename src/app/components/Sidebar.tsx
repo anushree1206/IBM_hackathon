@@ -15,10 +15,14 @@ const navLinks = [
   { name: "What-If Calculator", href: "/what-if-calculator", badge: null },
 ];
 
-export default function Sidebar() {
+export default function Sidebar({ sidebarOpen, setSidebarOpen }: { sidebarOpen: boolean; setSidebarOpen: (open: boolean) => void }) {
   const pathname = usePathname();
   return (
-    <aside className="bg-[#151c27] text-white w-64 min-h-screen flex flex-col py-6 px-4 shadow-lg">
+    <aside
+      className={`fixed inset-y-0 left-0 z-50 bg-[#151c27] text-white w-64 min-h-screen flex flex-col py-6 px-4 shadow-lg
+        transform ${sidebarOpen ? "translate-x-0" : "-translate-x-full"} md:relative md:translate-x-0
+        transition-transform duration-300 ease-in-out`}
+    >
       <Link href="/">
         <div className="text-2xl font-bold mb-10 tracking-tight cursor-pointer">CarbonGuard <span className="text-xs font-normal text-gray-400 ml-1"></span></div>
       </Link>
@@ -35,6 +39,7 @@ export default function Sidebar() {
                       ? "bg-[#22304a] text-blue-400"
                       : "hover:bg-[#22304a] text-gray-200"
                   }`}
+                  onClick={() => setSidebarOpen(false)}
                 >
                   {link.name}
                   {link.badge && (

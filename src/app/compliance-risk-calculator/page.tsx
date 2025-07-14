@@ -1,6 +1,4 @@
 import React from "react";
-import Sidebar from "../components/Sidebar";
-import Topbar from "../components/Topbar";
 
 const FileUpload = () => (
   <div className="bg-gray-800 p-6 rounded-lg mb-8">
@@ -42,10 +40,8 @@ const RecommendedActionsChart = () => (
 export default function ComplianceRiskCalculator() {
   return (
     <div className="flex min-h-screen bg-[#111827] text-white font-sans">
-      <Sidebar />
       <div className="flex-1 flex flex-col">
-        <Topbar />
-        <main className="flex-1 p-8 bg-[#111827]">
+        <main className="flex-1 p-4 sm:p-6 md:p-8 bg-[#111827]">
           <div className="flex justify-between items-center mb-8">
             <h1 className="text-2xl font-bold">Compliance Risk Calculator</h1>
             <button className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300">

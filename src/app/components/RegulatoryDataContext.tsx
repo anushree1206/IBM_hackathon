@@ -2,7 +2,20 @@
 
 import React, { createContext, useContext, useState, ReactNode } from "react";
 
-export type RegulatoryData = any[]; // Replace 'any' with a more specific type if known
+export interface RegulatoryDataItem {
+  Industry?: string;
+  Emissions?: string;
+  Due?: string;
+  Deadline?: string;
+  Regulation?: string;
+  Compliance?: string;
+  Status?: string;
+  emissions?: string;
+  industry?: string;
+  [key: string]: any; // eslint-disable-line @typescript-eslint/no-explicit-any -- Allow for other properties not explicitly defined
+}
+
+export type RegulatoryData = RegulatoryDataItem[];
 
 interface RegulatoryDataContextType {
   data: RegulatoryData;
@@ -26,4 +39,4 @@ export function useRegulatoryData() {
     throw new Error("useRegulatoryData must be used within a RegulatoryDataProvider");
   }
   return context;
-} 
+}
