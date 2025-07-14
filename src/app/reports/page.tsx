@@ -27,7 +27,9 @@ const reportsData = [
 const ReportsList = () => (
   <div className="bg-gray-800 p-8 rounded-lg w-full max-w-6xl mx-auto">
     <h2 className="text-2xl font-bold mb-6 text-white">Generated Reports</h2>
-    <div className="overflow-x-auto">
+
+    {/* Table for larger screens */}
+    <div className="overflow-x-auto hidden md:block">
       <table className="w-full text-left text-gray-300">
         <thead className="bg-gray-700 text-gray-100 uppercase text-sm">
           <tr>
@@ -56,6 +58,23 @@ const ReportsList = () => (
           ))}
         </tbody>
       </table>
+    </div>
+
+    {/* Cards for smaller screens */}
+    <div className="md:hidden space-y-4">
+      {reportsData.map((report) => (
+        <div key={report.id} className="bg-gray-700 p-4 rounded-lg shadow-md">
+          <div className="flex justify-between items-center mb-2">
+            <h3 className="font-semibold text-white">{report.reportType}</h3>
+            <span className={`px-2 py-1 text-xs font-semibold rounded-full ${report.format === 'PDF' ? 'bg-red-600' : report.format === 'CSV' ? 'bg-green-600' : 'bg-blue-600'}`}>
+              {report.format}
+            </span>
+          </div>
+          <p className="text-sm text-gray-300 mb-1">Date Range: {report.dateRange}</p>
+          <p className="text-sm text-gray-300 mb-3">Generated At: {report.generatedAt}</p>
+          <a href="#" className="text-blue-400 hover:text-blue-300 font-semibold text-sm">Download Report</a>
+        </div>
+      ))}
     </div>
   </div>
 );
