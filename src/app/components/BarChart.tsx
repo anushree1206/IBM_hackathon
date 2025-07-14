@@ -1,20 +1,8 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import Papa from "papaparse";
+import React, { useState } from "react";
 import { BarChart as RechartsBarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { useRegulatoryData } from "./RegulatoryDataContext";
-
-interface EmissionData {
-  Industry: string;
-  Revenue: number;
-  Emissions: number;
-  NumFacilities: number;
-  CO2ReductionTarget: number;
-  Timeline: number;
-  StrictnessLevel: number;
-  ComplianceCost: number;
-}
 
 interface ChartData {
   Industry: string;
@@ -48,7 +36,7 @@ function abbreviate(name: string) {
 }
 
 // Custom tooltip component
-const CustomTooltip = ({ active, payload }: any) => {
+const CustomTooltip = ({ active, payload }: { active?: boolean; payload?: Array<{ payload: { Industry: string; TotalEmissions: number; }; value: number; }> }) => {
   if (active && payload && payload.length) {
     return (
       <div style={{ background: '#23272f', color: '#fff', padding: '8px 16px', borderRadius: 8, fontWeight: 500, fontSize: 15, boxShadow: '0 2px 8px #0002' }}>
@@ -118,7 +106,7 @@ export default function BarChart() {
             radius={[8, 8, 0, 0]}
             minPointSize={10}
             maxBarSize={60}
-            onClick={(data) => setSelectedIndustry(((data as unknown) as ChartData)?.Industry || "")}
+            onClick={(data: ChartData) => setSelectedIndustry(data.Industry || "")}
             >
             {chartData.map((entry, idx) => (
               <Cell key={`cell-${idx}`} fill={entry.fill} />

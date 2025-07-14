@@ -1,8 +1,6 @@
 "use client";
 import React, { useRef } from "react";
 import { useRegulatoryData } from "../components/RegulatoryDataContext";
-import Sidebar from "../components/Sidebar";
-import Topbar from "../components/Topbar";
 
 function parseCSV(text: string) {
   const lines = text.trim().split("\n");
@@ -31,10 +29,8 @@ export default function RegulatoryScanner() {
 
   return (
     <div className="flex min-h-screen bg-[#111827] text-white font-sans">
-      <Sidebar />
       <div className="flex-1 flex flex-col">
-        <Topbar />
-        <main className="flex-1 p-8 bg-[#111827]">
+        <main className="flex-1 p-4 sm:p-6 md:p-8 bg-[#111827]">
           <div className="max-w-4xl mx-auto">
             <div className="mb-8">
               <h1 className="text-3xl font-bold text-white mb-2">Regulatory Scanner</h1>
@@ -137,4 +133,4 @@ export default function RegulatoryScanner() {
       </div>
     </div>
   );
-} 
+}
