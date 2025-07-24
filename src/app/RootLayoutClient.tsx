@@ -2,6 +2,7 @@
 import Sidebar from "./components/Sidebar";
 import { useState, useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import { useRegulatoryData } from "./components/RegulatoryDataContext";
 
 interface User {
   id: number;
@@ -19,7 +20,7 @@ export default function RootLayoutClient({
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [selectedCompany, setSelectedCompany] = useState("Acme Corp");
-  const [user, setUser] = useState<User | null>(null);
+  const { user, login, logout } = useRegulatoryData();
   const pathname = usePathname();
   const router = useRouter();
 
@@ -33,38 +34,19 @@ export default function RootLayoutClient({
 
   useEffect(() => {
     const token = localStorage.getItem("token");
-    if (token) {
-      fetchUserProfile();
+    const storedUser = localStorage.getItem("user");
+    if (token && storedUser) {
+      login(JSON.parse(storedUser), token);
     }
   }, []);
 
-  const fetchUserProfile = async () => {
-    const token = localStorage.getItem("token");
-    try {
-      const res = await fetch("http://localhost:8000/profile", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        const userData = await res.json();
-        setUser(userData);
-      } else {
-        localStorage.removeItem("token");
-        localStorage.removeItem("user");
-      }
-    } catch (error) {
-      console.error("Error fetching profile:", error);
-    }
-  };
-
   const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    setUser(null);
+    logout();
     router.push("/login");
   };
 
   // Don't show sidebar on landing page
-  if (pathname === "/") {
+  if (pathname === "/" || pathname === "/login" || pathname === "/register") {
     return <>{children}</>;
   }
 
@@ -73,7 +55,7 @@ export default function RootLayoutClient({
       <Sidebar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
       <div className="flex-1 flex flex-col">
         {/* Header with hamburger and profile */}
-        <header className="flex items-center justify-between px-4 py-4 shadow-sm rounded-b-xl md:px-8 bg-[#192132]">
+        <header className="flex items-center justify-between px-4 py-4 shadow-sm rounded-b-xl md:px-8">
           {/* Hamburger Menu */}
           <button
             className="text-white md:hidden focus:outline-none"

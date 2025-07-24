@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { useRegulatoryData } from "../components/RegulatoryDataContext";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -9,6 +10,7 @@ export default function LoginPage() {
   const [message, setMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
+  const { login } = useRegulatoryData();
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
@@ -25,8 +27,7 @@ export default function LoginPage() {
       const data = await res.json();
 
       if (res.ok) {
-        localStorage.setItem("token", data.access_token);
-        localStorage.setItem("user", JSON.stringify(data.user));
+        login(data.user, data.access_token);
         setMessage("Login successful! Redirecting...");
         setTimeout(() => router.push("/dashboard"), 1000);
       } else {
@@ -110,4 +111,4 @@ export default function LoginPage() {
       </div>
     </div>
   );
-} 
+}
