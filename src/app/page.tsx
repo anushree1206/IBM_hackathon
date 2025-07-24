@@ -10,7 +10,7 @@ export default function LandingPage() {
       <div className="relative z-10">
         <h1 className="text-5xl md:text-7xl font-bold text-white mb-4">Welcome to CarbonGuard</h1>
         <p className="text-lg md:text-xl text-white mb-8">Your partner in navigating the complexities of carbon compliance.</p>
-        <Link href="/dashboard">
+        <Link href="/register">
           <button className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg text-lg transition duration-300 cursor-pointer">
             Get Started
           </button>

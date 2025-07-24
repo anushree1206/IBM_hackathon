@@ -12,22 +12,47 @@ export interface RegulatoryDataItem {
   Status?: string;
   emissions?: string;
   industry?: string;
-  [key: string]: any; // eslint-disable-line @typescript-eslint/no-explicit-any -- Allow for other properties not explicitly defined
+  [key: string]: any; 
 }
 
 export type RegulatoryData = RegulatoryDataItem[];
 
+interface User {
+  id: number;
+  email: string;
+  full_name: string;
+  is_active: boolean;
+  created_at: string;
+}
+
 interface RegulatoryDataContextType {
   data: RegulatoryData;
   setData: (data: RegulatoryData) => void;
+  user: User | null;
+  login: (userData: User, token: string) => void;
+  logout: () => void;
 }
 
 const RegulatoryDataContext = createContext<RegulatoryDataContextType | undefined>(undefined);
 
 export function RegulatoryDataProvider({ children }: { children: ReactNode }) {
   const [data, setData] = useState<RegulatoryData>([]);
+  const [user, setUser] = useState<User | null>(null);
+
+  const login = (userData: User, token: string) => {
+    localStorage.setItem("token", token);
+    localStorage.setItem("user", JSON.stringify(userData));
+    setUser(userData);
+  };
+
+  const logout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    setUser(null);
+  };
+
   return (
-    <RegulatoryDataContext.Provider value={{ data, setData }}>
+    <RegulatoryDataContext.Provider value={{ data, setData, user, login, logout }}>
       {children}
     </RegulatoryDataContext.Provider>
   );

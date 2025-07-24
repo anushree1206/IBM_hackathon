@@ -29,14 +29,8 @@ export default function SettingsPage() {
   }, [router]);
 
   useEffect(() => {
-    if (settings.theme === "auto") {
-      const systemDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-      document.documentElement.classList.remove("light", "dark");
-      document.documentElement.classList.add(systemDark ? "dark" : "light");
-    } else {
-      document.documentElement.classList.remove("light", "dark");
-      document.documentElement.classList.add(settings.theme);
-    }
+    document.documentElement.classList.remove("light", "dark");
+    document.documentElement.classList.add(settings.theme);
   }, [settings.theme]);
 
   const fetchSettings = async () => {
@@ -124,7 +118,7 @@ export default function SettingsPage() {
                   >
                     <option value="dark">Dark</option>
                     <option value="light">Light</option>
-                    <option value="auto">Auto</option>
+                    
                   </select>
                 </div>
               </div>
