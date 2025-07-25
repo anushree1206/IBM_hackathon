@@ -1,5 +1,20 @@
 "use client";
 import React, { useState } from "react";
+import { Line, Bar } from 'react-chartjs-2';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend,
+} from 'chart.js';
+
+ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend);
+ChartJS.register(BarElement);
 
 interface Analysis {
   selectedCompany: string;
@@ -54,35 +69,6 @@ const FileUpload = ({ onFileUpload, fileName }: FileUploadProps) => {
   );
 };
 
-interface CompanySelectorProps {
-  selectedCompany: string;
-  setSelectedCompany: (company: string) => void;
-  onAnalyze: () => void;
-  loading: boolean;
-  hasFile: boolean;
-}
-
-const CompanySelector = ({ selectedCompany, setSelectedCompany, onAnalyze, loading, hasFile }: CompanySelectorProps) => (
-  <div className="bg-gray-800 p-6 rounded-lg">
-    <h3 className="text-lg font-semibold mb-4">Select Company & Analyze</h3>
-    <select 
-      className="w-full p-3 bg-gray-700 rounded-md text-white border border-gray-600 focus:ring-blue-500 focus:border-blue-500 mb-4"
-      value={selectedCompany}
-      onChange={(e) => setSelectedCompany(e.target.value)}
-    >
-      <option>Company A</option>
-      <option>Company B</option>
-      <option>Company C</option>
-    </select>
-    <button 
-      onClick={onAnalyze}
-      disabled={!hasFile || loading}
-      className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 text-white font-bold py-3 px-6 rounded-lg transition duration-300"
-    >
-      {loading ? 'Analyzing...' : 'Analyze Cost-Benefit'}
-    </button>
-  </div>
-);
 
 interface ROIRankingGraphsProps {
   analysis: Analysis | null;
@@ -90,90 +76,17 @@ interface ROIRankingGraphsProps {
 }
 
 // Simple ROI Bar Chart component
-const ROIBarChart = ({ analysis }: { analysis: Analysis }) => (
-  <div className="bg-gray-800 p-6 rounded-lg">
-    <h3 className="text-lg font-semibold mb-4">ROI Performance by Strategy</h3>
-    <div className="space-y-3">
-      {analysis.strategies.slice(0, 5).map((strategy, index) => (
-        <div key={index} className="flex items-center space-x-4">
-          <div className="w-32 text-sm text-gray-300 truncate">{strategy.strategy}</div>
-          <div className="flex-1 bg-gray-700 rounded-full h-6 relative">
-            <div 
-              className="bg-blue-600 h-6 rounded-full flex items-center justify-end pr-2"
-              style={{ width: `${Math.min(strategy.roi / 250 * 100, 100)}%` }}
-            >
-              <span className="text-xs font-semibold text-white">{strategy.roi.toFixed(1)}%</span>
-            </div>
-          </div>
-        </div>
-      ))}
-    </div>
-  </div>
-);
-
-// Cost vs Savings Chart
-const CostSavingsChart = ({ analysis }: { analysis: Analysis }) => (
-  <div className="bg-gray-800 p-6 rounded-lg">
-    <h3 className="text-lg font-semibold mb-4">Cost vs Savings Analysis</h3>
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-      <div>
-        <h4 className="text-sm font-medium mb-3 text-gray-300">Implementation Costs</h4>
-        <div className="space-y-2">
-          {analysis.strategies.slice(0, 3).map((strategy, index) => (
-            <div key={index} className="flex justify-between items-center p-2 bg-gray-700 rounded">
-              <span className="text-sm text-gray-300">{strategy.strategy}</span>
-              <span className="text-sm font-semibold text-red-400">${strategy.cost.toLocaleString()}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-      <div>
-        <h4 className="text-sm font-medium mb-3 text-gray-300">Projected Savings</h4>
-        <div className="space-y-2">
-          {analysis.strategies.slice(0, 3).map((strategy, index) => (
-            <div key={index} className="flex justify-between items-center p-2 bg-gray-700 rounded">
-              <span className="text-sm text-gray-300">{strategy.strategy}</span>
-              <span className="text-sm font-semibold text-green-400">${strategy.savings.toLocaleString()}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  </div>
-);
-
-// Company Performance Summary
-const CompanyPerformanceCard = ({ analysis }: { analysis: Analysis }) => (
-  <div className="bg-gray-800 p-6 rounded-lg">
-    <h3 className="text-lg font-semibold mb-4">Company Performance: {analysis.selectedCompany}</h3>
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-      <div className="text-center">
-        <div className="text-2xl font-bold text-blue-400">{analysis.companyData.roi}</div>
-        <div className="text-sm text-gray-400">ROI</div>
-      </div>
-      <div className="text-center">
-        <div className="text-2xl font-bold text-green-400">{analysis.companyData.annualSavings}</div>
-        <div className="text-sm text-gray-400">Annual Savings</div>
-      </div>
-      <div className="text-center">
-        <div className="text-2xl font-bold text-yellow-400">{analysis.companyData.paybackPeriod}</div>
-        <div className="text-sm text-gray-400">Payback Period</div>
-      </div>
-      <div className="text-center">
-        <div className="text-2xl font-bold text-purple-400">{analysis.companyData.initialCost}</div>
-        <div className="text-sm text-gray-400">Initial Cost</div>
-      </div>
-    </div>
-  </div>
-);
 
 export default function CostBenefitAnalysis() {
-  const [selectedCompany, setSelectedCompany] = useState("Company A");
+  const [selectedCompany, setSelectedCompany] = useState("");
   const [fileName, setFileName] = useState("");
   const [fileData, setFileData] = useState("");
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [companyOptions, setCompanyOptions] = useState<string[]>([]);
+  const [allResults, setAllResults] = useState<any[]>([]);
+  const [error, setError] = useState<string>("");
+  const [showAnalyze, setShowAnalyze] = useState(false);
 
   const handleFileUpload = (file: File) => {
     setFileName(file.name);
@@ -185,126 +98,227 @@ export default function CostBenefitAnalysis() {
     reader.readAsText(file);
   };
 
+  // Send CSV to FastAPI backend and update analysis
   const analyzeData = async () => {
-    if (!fileData) {
+    setError("");
+    if (!fileData || !fileName) {
       setError("Please upload a CSV file first");
       return;
     }
-
     setLoading(true);
-    setError("");
-
+    setAnalysis(null);
     try {
-      const response = await fetch('/api/cost-benefit-analysis', {
+      const formData = new FormData();
+      const blob = new Blob([fileData], { type: 'text/csv' });
+      formData.append('file', blob, fileName);
+      const response = await fetch('http://localhost:8000/cost-benefit-analysis/analyze', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          csvData: fileData,
-          selectedCompany
-        }),
+        body: formData,
       });
-
-      const data = await response.json();
-
-      if (data.success) {
-        setAnalysis(data.analysis);
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status}`);
+      }
+      const result = await response.json();
+      console.log("API result:", result);
+      if (result.results && result.results.length > 0 && result.companies && result.companies.length > 0) {
+        setAllResults(result.results);
+        setCompanyOptions(result.companies);
+        setShowAnalyze(true);
+        setSelectedCompany("");
       } else {
-        setError(data.error || 'Failed to analyze data');
+        setAnalysis(null);
+        setCompanyOptions([]);
+        setShowAnalyze(false);
+        setError("No company data found in analysis results.");
       }
     } catch (err) {
-      setError('Failed to connect to server');
+      setAnalysis(null);
+      setCompanyOptions([]);
+      setShowAnalyze(false);
+      setError("Failed to analyze data. " + (err instanceof Error ? err.message : ""));
     } finally {
       setLoading(false);
     }
   };
+
+  // Show ROI table only after user clicks Analyze for selected company
+  const handleAnalyzeCompany = () => {
+    if (!selectedCompany || allResults.length === 0) return;
+    const companyData = allResults.find((r: { company: string }) => r.company === selectedCompany);
+    if (companyData) {
+      setAnalysis({
+        selectedCompany: companyData.company,
+        companyData: companyData.companyData,
+        roiRankings: companyData.roiRankings,
+        strategies: companyData.strategies,
+        recommendations: companyData.recommendations,
+        chartData: {
+          costs: companyData.strategies.map((s: any) => s.cost),
+          savings: companyData.strategies.map((s: any) => s.savings),
+          strategies: companyData.strategies.map((s: any) => s.strategy),
+          roi: companyData.strategies.map((s: any) => s.roi),
+        },
+      });
+    }
+  };
+
+  // Remove effect that auto-shows analysis
 
   return (
     <div className="flex min-h-screen bg-[#111827] text-white font-sans">
       <div className="flex-1 flex flex-col">
         <main className="flex-1 p-4 sm:p-6 md:p-8 bg-[#111827]">
           <h1 className="text-2xl font-bold mb-8">Cost-Benefit Analysis</h1>
+          {/* Error display */}
           {error && (
-            <div className="bg-red-600 text-white p-4 rounded-lg mb-6">
+            <div className="bg-red-900 text-red-300 p-4 mb-4 rounded-lg text-center">
               {error}
             </div>
           )}
-          
-          {/* Upload and Company Selection Row */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+          {/* File Upload */}
+          <div className="mb-6">
             <FileUpload onFileUpload={handleFileUpload} fileName={fileName} />
-            <CompanySelector 
-              selectedCompany={selectedCompany}
-              setSelectedCompany={setSelectedCompany}
-              onAnalyze={analyzeData}
-              loading={loading}
-              hasFile={!!fileData}
-            />
+            <button 
+              onClick={analyzeData}
+              disabled={!fileData || loading}
+              className="w-full mt-4 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 text-white font-bold py-3 px-6 rounded-lg transition duration-300"
+            >
+              {loading ? 'Uploading...' : 'Upload'}
+            </button>
           </div>
-          
-          {/* Analysis Results */}
-          {loading ? (
-            <div className="bg-gray-800 p-8 rounded-lg text-center">
-              <div className="text-gray-300">Analyzing data...</div>
+          {/* Company Dropdown and Analyze Button */}
+          {showAnalyze && companyOptions.length > 0 && (
+            <div className="mb-8 bg-gray-800 p-6 rounded-lg">
+              <h3 className="text-lg font-semibold mb-4">Select Company</h3>
+              <select 
+                className="w-full p-3 bg-gray-700 rounded-md text-white border border-gray-600 focus:ring-blue-500 focus:border-blue-500 mb-4"
+                value={selectedCompany}
+                onChange={(e) => setSelectedCompany(e.target.value)}
+              >
+                <option value="">Choose a company</option>
+                {companyOptions.map((company) => (
+                  <option key={company} value={company}>{company}</option>
+                ))}
+              </select>
+              <button 
+                onClick={handleAnalyzeCompany}
+                disabled={!selectedCompany}
+                className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 text-white font-bold py-3 px-6 rounded-lg transition duration-300"
+              >
+                Analyze
+              </button>
             </div>
-          ) : analysis ? (
-            <div className="space-y-6">
-              {/* Company Performance Card */}
-              <CompanyPerformanceCard analysis={analysis} />
-              
-              {/* Charts Row */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <ROIBarChart analysis={analysis} />
-                <CostSavingsChart analysis={analysis} />
-              </div>
-              
-              {/* Strategy Rankings Table */}
-              <div className="bg-gray-800 p-6 rounded-lg">
-                <h3 className="text-lg font-semibold mb-4">ROI Rankings for {analysis.selectedCompany}</h3>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm text-left text-gray-300">
-                    <thead className="text-xs text-gray-400 uppercase bg-gray-700">
-                      <tr>
-                        <th className="px-6 py-3">#</th>
-                        <th className="px-6 py-3">Strategy</th>
-                        <th className="px-6 py-3">Cost</th>
-                        <th className="px-6 py-3">Savings</th>
-                        <th className="px-6 py-3">Waste Reduction</th>
-                        <th className="px-6 py-3">ROI</th>
+          )}
+          {/* ROI Rankings Table Only */}
+          {analysis && (
+            <div className="bg-gray-800 p-6 rounded-lg">
+              <h3 className="text-lg font-semibold mb-4">ROI Rankings for {analysis.selectedCompany}</h3>
+              <div className="overflow-x-auto mb-8">
+                <table className="w-full text-sm text-left text-gray-300">
+                  <thead className="text-xs text-gray-400 uppercase bg-gray-700">
+                    <tr>
+                      <th className="px-6 py-3">#</th>
+                      <th className="px-6 py-3">Strategy</th>
+                      <th className="px-6 py-3">Cost</th>
+                      <th className="px-6 py-3">Savings</th>
+                      <th className="px-6 py-3">Waste Reduction</th>
+                      <th className="px-6 py-3">ROI</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {analysis.strategies.map((strategy, index) => (
+                      <tr key={index} className="bg-gray-800 border-b border-gray-700">
+                        <td className="px-6 py-4 font-medium text-white">{index}</td>
+                        <td className="px-6 py-4">{strategy.strategy}</td>
+                        <td className="px-6 py-4">${strategy.cost.toLocaleString()}</td>
+                        <td className="px-6 py-4">${strategy.savings.toLocaleString()}</td>
+                        <td className="px-6 py-4">{strategy.waste_reduction}</td>
+                        <td className="px-6 py-4 text-green-400 font-semibold">{strategy.roi.toFixed(1)}%</td>
                       </tr>
-                    </thead>
-                    <tbody>
-                      {analysis.strategies.map((strategy, index) => (
-                        <tr key={index} className="bg-gray-800 border-b border-gray-700">
-                          <td className="px-6 py-4 font-medium text-white">{index}</td>
-                          <td className="px-6 py-4">{strategy.strategy}</td>
-                          <td className="px-6 py-4">${strategy.cost.toLocaleString()}</td>
-                          <td className="px-6 py-4">${strategy.savings.toLocaleString()}</td>
-                          <td className="px-6 py-4">{strategy.waste_reduction}</td>
-                          <td className="px-6 py-4 text-green-400 font-semibold">{strategy.roi.toFixed(1)}%</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-              
-              {/* Recommendations */}
-              {analysis.recommendations && analysis.recommendations.length > 0 && (
-                <div className="bg-gray-800 p-6 rounded-lg">
-                  <h3 className="text-lg font-semibold mb-4">Recommendations</h3>
-                  <ul className="list-disc list-inside space-y-2 text-gray-300">
-                    {analysis.recommendations.map((rec, index) => (
-                      <li key={index}>{rec}</li>
                     ))}
-                  </ul>
-                </div>
-              )}
+                  </tbody>
+                </table>
+              </div>
+              {/* ROI Bar Chart */}
+              <h3 className="text-lg font-semibold mb-4">ROI Bar Chart (per Strategy)</h3>
+              <div className="bg-gray-900 p-4 rounded-lg mb-8">
+                <Bar
+                  data={{
+                    labels: analysis.strategies.map((s) => s.strategy),
+                    datasets: [
+                      {
+                        label: 'ROI (%)',
+                        data: analysis.strategies.map((s) => s.roi),
+                        backgroundColor: '#2563eb',
+                        borderRadius: 6,
+                      },
+                    ],
+                  }}
+                  options={{
+                    responsive: true,
+                    plugins: {
+                      legend: { display: false },
+                      title: { display: false },
+                    },
+                    scales: {
+                      x: {
+                        title: { display: true, text: 'Strategy', color: '#fff' },
+                        ticks: { color: '#fff' },
+                        grid: { color: '#374151' },
+                      },
+                      y: {
+                        title: { display: true, text: 'ROI (%)', color: '#fff' },
+                        ticks: { color: '#fff' },
+                        grid: { color: '#374151' },
+                      },
+                    },
+                  }}
+                />
+              </div>
+              {/* Benefit Line Chart */}
+              <div className="bg-gray-900 p-4 rounded-lg">
+                <Line
+                  data={{
+                    labels: analysis.strategies.map((s) => s.strategy),
+                    datasets: [
+                      {
+                        label: '', // Remove label so legend doesn't show
+                        data: analysis.strategies.map((s) => s.savings),
+                        borderColor: '#34d399',
+                        backgroundColor: 'rgba(52,211,153,0.2)',
+                        tension: 0.3,
+                        pointRadius: 4,
+                        pointBackgroundColor: '#34d399',
+                      },
+                    ],
+                  }}
+                  options={{
+                    responsive: true,
+                    plugins: {
+                      legend: { display: false },
+                      title: { display: false },
+                    },
+                    scales: {
+                      x: {
+                        title: { display: true, text: 'Strategy', color: '#fff' },
+                        ticks: { color: '#fff' },
+                        grid: { color: '#374151' },
+                      },
+                      y: {
+                        title: { display: true, text: 'Projected Savings', color: '#fff' },
+                        ticks: { color: '#fff' },
+                        grid: { color: '#374151' },
+                      },
+                    },
+                  }}
+                />
+              </div>
             </div>
-          ) : (
+          )}
+          {/* Empty state if no analysis yet */}
+          {!analysis && !loading && (
             <div className="bg-gray-800 p-8 rounded-lg text-center">
-              <div className="text-gray-300">Upload a CSV file and select a company to see the analysis.</div>
+              <div className="text-gray-300">Upload a CSV file and click Upload to see companies. Then select a company and click Analyze to see ROI rankings.</div>
             </div>
           )}
         </main>

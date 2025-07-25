@@ -190,7 +190,8 @@ export default function ComplianceRiskCalculator() {
   const [fileData, setFileData] = useState("");
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [filterAction, setFilterAction] = useState("");
+  // Removed error state since backend logic is removed
 
   const handleFileUpload = (file: File) => {
     setFileName(file.name);
@@ -203,55 +204,53 @@ export default function ComplianceRiskCalculator() {
     reader.readAsText(file);
   };
 
-  const analyzeRisk = async (data, name) => {
-    if (!data) {
-      setError("File data is missing");
-      return;
-    }
 
+  // Integrate with FastAPI backend
+const analyzeRisk = async () => {
+    if (!fileData || !fileName) return;
     setLoading(true);
-    setError("");
-
+    setAnalysis(null);
     try {
-      const response = await fetch('/api/compliance-risk-calculator', {
+      // Prepare file for backend
+      const formData = new FormData();
+      const blob = new Blob([fileData], { type: 'text/csv' });
+      formData.append('file', blob, fileName);
+      const response = await fetch('http://localhost:8000/compliance-risk-calculator/analyze', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          fileData: data,
-          fileName: name
-        }),
+        body: formData,
       });
-
       const result = await response.json();
-
-      if (result.success) {
-        setAnalysis(result.analysis);
+      // Map backend results to frontend structure
+      if (result.results) {
+        setAnalysis({
+          fileName,
+          overallRiskScore: 0, // Not provided by backend
+          riskLevel: '', // Not provided by backend
+          keyRiskAreas: [], // Not provided by backend
+          recommendations: [], // Not provided by backend
+          complianceMetrics: {
+            regulatoryCompliance: 0,
+            dataPrivacy: 0,
+            environmentalImpact: 0,
+            operationalRisk: 0,
+          },
+          actionItems: [],
+          timeline: null,
+          companyRiskData: result.results,
+        });
       } else {
-        setError(result.error || 'Failed to analyze risk');
+        setAnalysis(null);
       }
     } catch (err) {
-      setError('Failed to connect to server');
+      setAnalysis(null);
     } finally {
       setLoading(false);
     }
   };
 
-  const downloadReport = async () => {
-    try {
-      const response = await fetch('/api/compliance-risk-calculator');
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = "compliance-risk-report.csv";
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-    } catch (err) {
-      setError('Failed to download report');
-    }
+  // Placeholder for downloadReport function
+  const downloadReport = () => {
+    alert('Download functionality will be available after backend integration.');
   };
 
   return (
@@ -267,16 +266,12 @@ export default function ComplianceRiskCalculator() {
               Download Risk Report (CSV)
             </button>
           </div>
-          {error && (
-            <div className="bg-red-600 text-white p-4 rounded-lg mb-6">
-              {error}
-            </div>
-          )}
+          {/* Error display removed since error state is gone */}
           {/* Upload and Analyze Section */}
           <div className="mb-8">
             <FileUpload 
               onFileUpload={handleFileUpload} 
-              onAnalyze={() => analyzeRisk(fileData, fileName)}
+              onAnalyze={analyzeRisk}
               fileName={fileName} 
               loading={loading}
               hasFile={!!fileData}
@@ -288,22 +283,107 @@ export default function ComplianceRiskCalculator() {
             <div className="bg-gray-800 p-8 rounded-lg text-center">
               <div className="text-gray-300">Analyzing risk data...</div>
             </div>
-          ) : analysis ? (
-            <div className="space-y-6">
-              {/* Summary and Charts Row */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <AnalysisResults analysis={analysis} />
-                <RiskMetricsChart analysis={analysis} />
-                <CompanyRiskChart analysis={analysis} />
-              </div>
-              
-              {/* Recommendations */}
-              <RecommendedActionsChart analysis={analysis} />
-              
-              {/* Company Risk Data Table */}
-              {analysis.companyRiskData && (
+          ) : analysis && analysis.companyRiskData ? (
+            (() => {
+              // Filtered data
+              const filteredData = filterAction
+                ? analysis.companyRiskData.filter(c => c.recommended_action === filterAction)
+                : analysis.companyRiskData;
+              return (
                 <div className="bg-gray-800 p-6 rounded-lg">
                   <h3 className="text-lg font-semibold mb-4">Compliance Risk Analysis Results</h3>
+
+                  {/* Bar Chart for Savings If Fixed by Company & Pie Chart */}
+                  <div className="mb-8 flex flex-row gap-8">
+                    <div style={{ flex: 2 }}>
+                      <h4 className="font-semibold mb-2 text-gray-300">Savings If Fixed (Bar Chart)</h4>
+                      <div className="flex flex-col">
+                        {/* SVG Bar Chart with Axes, more spread */}
+                        <svg width={filteredData.length * 80 + 120} height="260">
+                          {/* Y-axis */}
+                          <line x1="80" y1="20" x2="80" y2="200" stroke="#d1d5db" strokeWidth="2" />
+                          {/* X-axis */}
+                          <line x1="80" y1="200" x2={filteredData.length * 80 + 80} y2="200" stroke="#d1d5db" strokeWidth="2" />
+                          {/* Y-axis labels (0, max) */}
+                          <text x="50" y="200" fill="#d1d5db" fontSize="12">0</text>
+                          <text x="40" y="40" fill="#d1d5db" fontSize="12">{filteredData.length > 0 ? Math.max(...filteredData.map(c => Math.abs(c.savings_if_fixed))).toLocaleString() : 0}</text>
+                          {/* Bars */}
+                          {(() => {
+                            const maxValue = filteredData.length > 0 ? Math.max(...filteredData.map(c => Math.abs(c.savings_if_fixed))) : 1;
+                            return filteredData.map((company, idx) => {
+                              const barHeight = (Math.abs(company.savings_if_fixed) / maxValue) * 160;
+                              return (
+                                <g key={company.company}>
+                                  <rect
+                                    x={100 + idx * 80}
+                                    y={200 - barHeight}
+                                    width="48"
+                                    height={barHeight}
+                                    fill={company.savings_if_fixed >= 0 ? '#34D399' : '#F87171'}
+                                  />
+                                  {/* Company label (x-axis, rotated) */}
+                                  <text x={124 + idx * 80} y="225" textAnchor="end" fill="#d1d5db" fontSize="12" transform={`rotate(-45,${124 + idx * 80},225)`}>{company.company}</text>
+                                  {/* Value label above bar */}
+                                  <text x={124 + idx * 80} y={200 - barHeight - 8} textAnchor="middle" fill={company.savings_if_fixed >= 0 ? '#34D399' : '#F87171'} fontSize="12">
+                                    {company.savings_if_fixed >= 0 ? '+' : '-'}${Math.abs(company.savings_if_fixed).toLocaleString()}
+                                  </text>
+                                </g>
+                              );
+                            });
+                          })()}
+                        </svg>
+                      </div>
+                    </div>
+                    {/* Pie Chart for Recommended Actions */}
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                      <h4 className="font-semibold mb-2 text-gray-300">Recommended Actions (Pie Chart)</h4>
+                      {(() => {
+                        const actionCounts = filteredData.reduce((acc, curr) => {
+                          acc[curr.recommended_action] = (acc[curr.recommended_action] || 0) + 1;
+                          return acc;
+                        }, {} as Record<string, number>);
+                        const total = Object.values(actionCounts).reduce((a, b) => a + b, 0);
+                        let startAngle = 0;
+                        const colors = ['#34D399', '#F87171', '#60A5FA', '#FBBF24'];
+                        const actions = Object.keys(actionCounts);
+                        return (
+                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                            <svg width="160" height="160" viewBox="0 0 160 160">
+                              {actions.map((action, idx) => {
+                                const value = actionCounts[action];
+                                const angle = (value / total) * 2 * Math.PI;
+                                const x1 = 80 + 70 * Math.cos(startAngle);
+                                const y1 = 80 + 70 * Math.sin(startAngle);
+                                const x2 = 80 + 70 * Math.cos(startAngle + angle);
+                                const y2 = 80 + 70 * Math.sin(startAngle + angle);
+                                const largeArcFlag = angle > Math.PI ? 1 : 0;
+                                const pathData = `M80,80 L${x1},${y1} A70,70 0 ${largeArcFlag},1 ${x2},${y2} Z`;
+                                const slice = (
+                                  <path key={action} d={pathData} fill={colors[idx % colors.length]} />
+                                );
+                                startAngle += angle;
+                                return slice;
+                              })}
+                              {/* Center circle for donut effect */}
+                              <circle cx="80" cy="80" r="40" fill="#111827" />
+                            </svg>
+                            {/* Legend with more spacing and spread text */}
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', marginTop: 16 }}>
+                              {actions.map((action, idx) => (
+                                <div key={action} style={{ display: 'flex', alignItems: 'center', marginBottom: 12 }}>
+                                  <div style={{ width: 18, height: 18, background: colors[idx % colors.length], borderRadius: 4, marginRight: 12 }}></div>
+                                  <span style={{ color: '#d1d5db', fontSize: 15, letterSpacing: 1, fontWeight: 500 }}>{action}</span>
+                                  <span style={{ color: '#d1d5db', fontSize: 15, marginLeft: 10 }}>({actionCounts[action]})</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  </div>
+
+                  {/* Table */}
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm text-left text-gray-300">
                       <thead className="text-xs text-gray-400 uppercase bg-gray-700">
@@ -317,7 +397,7 @@ export default function ComplianceRiskCalculator() {
                         </tr>
                       </thead>
                       <tbody>
-                        {analysis.companyRiskData.map((company, index) => (
+                        {filteredData.map((company, index) => (
                           <tr key={index} className="bg-gray-800 border-b border-gray-700">
                             <td className="px-6 py-4 font-medium text-white">{index}</td>
                             <td className="px-6 py-4 font-medium text-white">{company.company}</td>
@@ -334,9 +414,83 @@ export default function ComplianceRiskCalculator() {
                       </tbody>
                     </table>
                   </div>
+
+                  {/* Compliance Cost vs Penalty Cost Bar Chart & Filtering UI */}
+                  <div className="mb-8 flex flex-row gap-8">
+                    <div style={{ flex: 2 }}>
+                      <h4 className="font-semibold mb-2 text-gray-300">Compliance Cost vs Penalty Cost (Bar Chart)</h4>
+                      <div className="flex flex-col">
+                        <svg width={filteredData.length * 80 + 120} height="260">
+                          {/* Y-axis */}
+                          <line x1="80" y1="20" x2="80" y2="200" stroke="#d1d5db" strokeWidth="2" />
+                          {/* X-axis */}
+                          <line x1="80" y1="200" x2={filteredData.length * 80 + 80} y2="200" stroke="#d1d5db" strokeWidth="2" />
+                          {/* Y-axis labels (0, max) */}
+                          <text x="50" y="200" fill="#d1d5db" fontSize="12">0</text>
+                          <text x="40" y="40" fill="#d1d5db" fontSize="12">{filteredData.length > 0 ? Math.max(...filteredData.map(c => Math.max(c.compliance_cost, c.penalty_cost))).toLocaleString() : 0}</text>
+                          {/* Bars */}
+                          {(() => {
+                            const maxValue = filteredData.length > 0 ? Math.max(...filteredData.map(c => Math.max(c.compliance_cost, c.penalty_cost))) : 1;
+                            return filteredData.map((company, idx) => {
+                              const complianceBarHeight = (company.compliance_cost / maxValue) * 160;
+                              const penaltyBarHeight = (company.penalty_cost / maxValue) * 160;
+                              return (
+                                <g key={company.company}>
+                                  {/* Compliance Cost Bar */}
+                                  <rect
+                                    x={100 + idx * 80}
+                                    y={200 - complianceBarHeight}
+                                    width="20"
+                                    height={complianceBarHeight}
+                                    fill="#60A5FA"
+                                  />
+                                  {/* Penalty Cost Bar */}
+                                  <rect
+                                    x={120 + idx * 80}
+                                    y={200 - penaltyBarHeight}
+                                    width="20"
+                                    height={penaltyBarHeight}
+                                    fill="#FBBF24"
+                                  />
+                                  {/* Company label (x-axis, rotated) */}
+                                  <text x={124 + idx * 80} y="225" textAnchor="end" fill="#d1d5db" fontSize="12" transform={`rotate(-45,${124 + idx * 80},225)`}>{company.company}</text>
+                                </g>
+                              );
+                            });
+                          })()}
+                        </svg>
+                        {/* Bar Chart Legend */}
+                        <div className="flex flex-row gap-8 mt-4 items-center">
+                          <div className="flex items-center mr-8">
+                            <div style={{ width: 18, height: 18, background: '#60A5FA', borderRadius: 4, marginRight: 8 }}></div>
+                            <span style={{ color: '#d1d5db', fontSize: 15, letterSpacing: 1, fontWeight: 500 }}>Compliance Cost (Blue)</span>
+                          </div>
+                          <div className="flex items-center">
+                            <div style={{ width: 18, height: 18, background: '#FBBF24', borderRadius: 4, marginRight: 8 }}></div>
+                            <span style={{ color: '#d1d5db', fontSize: 15, letterSpacing: 1, fontWeight: 500 }}>Penalty Cost (Yellow)</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    {/* Filtering UI */}
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                      <h4 className="font-semibold mb-2 text-gray-300">Filter by Recommended Action</h4>
+                      <select
+                        className="bg-gray-700 text-white p-2 rounded mb-4"
+                        value={filterAction}
+                        onChange={e => setFilterAction(e.target.value)}
+                      >
+                        <option value="">All</option>
+                        {Array.from(new Set(analysis.companyRiskData.map(c => c.recommended_action))).map(action => (
+                          <option key={action} value={action}>{action}</option>
+                        ))}
+                      </select>
+                      <div className="text-gray-400 text-sm">Select an action to filter the table and charts.</div>
+                    </div>
+                  </div>
                 </div>
-              )}
-            </div>
+              );
+            })()
           ) : (
             <div className="bg-gray-800 p-8 rounded-lg text-center">
               <div className="text-gray-300">Upload a file and click analyze to see the risk assessment.</div>

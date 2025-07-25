@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi import FastAPI, Depends, HTTPException, status, File, UploadFile
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, EmailStr
@@ -40,6 +40,51 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/login")
 
 app = FastAPI(title="Winova API", version="1.0.0")
+
+# --- Cost-Benefit Analysis Endpoint ---
+@app.post("/cost-benefit-analysis/analyze")
+async def analyze_cost_benefit(file: UploadFile = File(...)):
+    import io
+    import pandas as pd
+    content = await file.read()
+    df = pd.read_csv(io.BytesIO(content))
+    required_cols = {"company", "strategy", "cost", "projected_savings", "waste_reduction"}
+    if not required_cols.issubset(df.columns):
+        raise HTTPException(status_code=400, detail=f"CSV must contain columns: {', '.join(required_cols)}")
+    results = []
+    companies = df['company'].unique().tolist()
+    for company in companies:
+        company_df = df[df['company'] == company]
+        options = []
+        for _, row in company_df.iterrows():
+            roi = (row['projected_savings'] - row['cost']) / row['cost'] * 100 if row['cost'] else 0
+            options.append({
+                "strategy": row['strategy'],
+                "cost": row['cost'],
+                "savings": row['projected_savings'],
+                "waste_reduction": row['waste_reduction'],
+                "roi": round(roi, 2)
+            })
+        sorted_options = sorted(options, key=lambda x: x['roi'], reverse=True)
+        top = sorted_options[0] if sorted_options else {}
+        company_data = {
+            "initialCost": f"${top['cost']:,}" if top else "",
+            "annualSavings": f"${top['savings']:,}" if top else "",
+            "roi": f"{top['roi']}%" if top else "",
+            "paybackPeriod": "",  # Add if available in CSV
+            "implementationTime": ""  # Add if available in CSV
+        }
+        results.append({
+            "company": company,
+            "companyData": company_data,
+            "roiRankings": sorted_options,
+            "strategies": sorted_options,
+            "recommendations": [
+                f"Best strategy: {top['strategy']}" if top else "No strategies found."
+            ] if top else [],
+        })
+    # Return companies list for dropdown
+    return {"results": results, "companies": companies}
 
 # CORS middleware
 app.add_middleware(
@@ -300,7 +345,79 @@ def update_settings(
         "language": settings.get("language", "en")
     }
 
+import io
+import pandas as pd
+from fastapi import UploadFile, File
+from fastapi.responses import JSONResponse, StreamingResponse
+
 # Dashboard endpoints
+
+@app.post("/compliance-risk-calculator/analyze")
+async def analyze_compliance(file: UploadFile = File(...)):
+    if not file.filename.endswith('.csv'):
+        raise HTTPException(status_code=400, detail="Only CSV files are supported.")
+    content = await file.read()
+    df = pd.read_csv(io.BytesIO(content))
+    required_cols = {"company_name", "compliance_cost", "penalty_cost"}
+    if not required_cols.issubset(df.columns):
+        raise HTTPException(status_code=400, detail=f"CSV must contain columns: {', '.join(required_cols)}")
+
+    # --- Existing company risk logic ---
+    def calculate_risk(company_name, compliance_cost, penalty_cost):
+        savings = penalty_cost - compliance_cost
+        decision = "Fix Compliance Issue" if compliance_cost < penalty_cost else "Accept Penalty"
+        return {
+            "company": company_name,
+            "compliance_cost": compliance_cost,
+            "penalty_cost": penalty_cost,
+            "savings_if_fixed": savings,
+            "recommended_action": decision
+        }
+    def prioritize_by_impact(risks):
+        return sorted(risks, key=lambda x: x['savings_if_fixed'], reverse=True)
+    risk_reports = [
+        calculate_risk(row['company_name'], row['compliance_cost'], row['penalty_cost'])
+        for _, row in df.iterrows()
+    ]
+    prioritized = prioritize_by_impact(risk_reports)
+
+    return JSONResponse(content={
+        "results": prioritized
+    })
+
+@app.post("/compliance-risk-calculator/download")
+async def download_compliance_report(file: UploadFile = File(...)):
+    content = await file.read()
+    df = pd.read_csv(io.BytesIO(content))
+    required_cols = {"company_name", "compliance_cost", "penalty_cost"}
+    if not required_cols.issubset(df.columns):
+        raise HTTPException(status_code=400, detail=f"CSV must contain columns: {', '.join(required_cols)}")
+    def calculate_risk(company_name, compliance_cost, penalty_cost):
+        savings = penalty_cost - compliance_cost
+        decision = "Fix Compliance Issue" if compliance_cost < penalty_cost else "Accept Penalty"
+        return {
+            "company": company_name,
+            "compliance_cost": compliance_cost,
+            "penalty_cost": penalty_cost,
+            "savings_if_fixed": savings,
+            "recommended_action": decision
+        }
+    def prioritize_by_impact(risks):
+        return sorted(risks, key=lambda x: x['savings_if_fixed'], reverse=True)
+    risk_reports = [
+        calculate_risk(row['company_name'], row['compliance_cost'], row['penalty_cost'])
+        for _, row in df.iterrows()
+    ]
+    prioritized = prioritize_by_impact(risk_reports)
+    result_df = pd.DataFrame(prioritized)
+    stream = io.StringIO()
+    result_df.to_csv(stream, index=False)
+    response = StreamingResponse(
+        iter([stream.getvalue()]),
+        media_type="text/csv"
+    )
+    response.headers["Content-Disposition"] = "attachment; filename=compliance_risk_output.csv"
+    return response
 @app.get("/dashboard")
 def dashboard():
     return {
