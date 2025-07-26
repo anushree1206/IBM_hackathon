@@ -114,6 +114,24 @@ class SettingsUpdate(BaseModel):
     notifications: Optional[bool] = None
     language: Optional[str] = None
 
+class AlertSchedule(BaseModel):
+    alert_type: str  # 'compliance_deadline', 'report_generation', 'data_review'
+    title: str
+    description: str
+    trigger_date: datetime
+    advance_days: int = 7  # Days before the actual deadline to trigger
+    recurrence: Optional[str] = None  # 'daily', 'weekly', 'monthly', 'yearly'
+    priority: str = 'medium'  # 'low', 'medium', 'high', 'critical'
+    enabled: bool = True
+
+class ReportSchedule(BaseModel):
+    report_type: str  # 'compliance', 'carbon_analysis', 'regulatory_summary'
+    title: str
+    schedule_cron: str  # Cron expression for scheduling
+    recipients: List[str] = []  # Email addresses
+    enabled: bool = True
+    include_charts: bool = True
+
 class UserResponse(BaseModel):
     id: str
     email: EmailStr
@@ -349,6 +367,17 @@ import io
 import pandas as pd
 from fastapi import UploadFile, File
 from fastapi.responses import JSONResponse, StreamingResponse
+from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.triggers.cron import CronTrigger
+from apscheduler.triggers.date import DateTrigger
+import threading
+from typing import List, Dict, Any
+import json
+from datetime import timedelta
+
+# Initialize scheduler for proactive alerts
+scheduler = BackgroundScheduler()
+scheduler.start()
 
 # Dashboard endpoints
 
@@ -434,15 +463,457 @@ def dashboard():
 def compliance_alerts():
     return {
         "alerts": [
-            {"id": 1, "level": "High", "message": "CO2 threshold exceeded", "date": "2024-01-15"},
-            {"id": 2, "level": "Medium", "message": "Upcoming regulation deadline", "date": "2024-01-20"},
-            {"id": 3, "level": "Low", "message": "Monthly report due", "date": "2024-01-25"}
+            {"id": 1, "type": "High", "message": "EU ETS deadline approaching", "date": "2024-03-15"},
+            {"id": 2, "type": "Medium", "message": "Carbon tax filing due", "date": "2024-04-01"}
         ]
     }
 
+# Proactive Alert System Functions
+def trigger_proactive_alert(alert_data: dict):
+    """Function to trigger proactive alerts"""
+    try:
+        print(f"🚨 Triggering proactive alert: {alert_data['title']}")
+        
+        # Store alert in database
+        alerts_collection = db.proactive_alerts
+        alert_document = {
+            "user_id": alert_data.get("user_id"),
+            "alert_type": alert_data.get("alert_type"),
+            "title": alert_data.get("title"),
+            "description": alert_data.get("description"),
+            "priority": alert_data.get("priority", "medium"),
+            "triggered_at": datetime.utcnow(),
+            "status": "active",
+            "read": False
+        }
+        
+        result = alerts_collection.insert_one(alert_document)
+        print(f"✅ Alert stored with ID: {result.inserted_id}")
+        
+        # Send email notification if configured
+        if alert_data.get("send_email", True):
+            user_email = alert_data.get("user_email")
+            if user_email:
+                send_email(
+                    user_email,
+                    f"Proactive Alert: {alert_data['title']}",
+                    f"Alert Details:\n\n{alert_data['description']}\n\nPriority: {alert_data['priority'].upper()}\n\nTriggered at: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC"
+                )
+                print(f"📧 Email notification sent to {user_email}")
+        
+        return True
+    except Exception as e:
+        print(f"❌ Error triggering proactive alert: {str(e)}")
+        return False
+
+def generate_automated_report(report_config: dict):
+    """Function to generate automated reports"""
+    try:
+        print(f"📊 Generating automated report: {report_config['title']}")
+        
+        user_id = report_config.get("user_id")
+        report_type = report_config.get("report_type")
+        
+        # Get user's regulatory data
+        regulatory_collection = db.regulatory_data
+        user_data = list(regulatory_collection.find({"user_id": user_id}))
+        
+        if not user_data:
+            print(f"⚠️ No data found for user {user_id}")
+            return False
+        
+        # Generate report based on type
+        report_content = {}
+        
+        if report_type == "compliance":
+            # Analyze compliance status
+            all_records = []
+            for upload in user_data:
+                all_records.extend(upload.get("data", []))
+            
+            report_content = {
+                "report_type": "Compliance Summary",
+                "generated_at": datetime.utcnow().isoformat(),
+                "total_records": len(all_records),
+                "compliance_status": "Under Review",
+                "recommendations": [
+                    "Review upcoming compliance deadlines",
+                    "Update regulatory data regularly",
+                    "Monitor regulatory changes"
+                ]
+            }
+        
+        elif report_type == "carbon_analysis":
+            report_content = {
+                "report_type": "Carbon Analysis",
+                "generated_at": datetime.utcnow().isoformat(),
+                "carbon_footprint": "Analysis in progress",
+                "recommendations": [
+                    "Implement carbon reduction strategies",
+                    "Monitor emissions regularly"
+                ]
+            }
+        
+        # Store report in database
+        reports_collection = db.automated_reports
+        report_document = {
+            "user_id": user_id,
+            "report_type": report_type,
+            "title": report_config.get("title"),
+            "content": report_content,
+            "generated_at": datetime.utcnow(),
+            "status": "completed"
+        }
+        
+        result = reports_collection.insert_one(report_document)
+        print(f"✅ Report stored with ID: {result.inserted_id}")
+        
+        # Send report via email if configured
+        recipients = report_config.get("recipients", [])
+        if recipients:
+            report_text = json.dumps(report_content, indent=2)
+            for recipient in recipients:
+                send_email(
+                    recipient,
+                    f"Automated Report: {report_config['title']}",
+                    f"Report Generated: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC\n\n{report_text}"
+                )
+                print(f"📧 Report sent to {recipient}")
+        
+        return True
+    except Exception as e:
+        print(f"❌ Error generating automated report: {str(e)}")
+        return False
+
+# API Endpoints for Proactive Alerts and Reports
+@app.post("/proactive-alerts/schedule")
+async def schedule_proactive_alert(
+    alert_schedule: AlertSchedule,
+    current_user: dict = Depends(get_current_user)
+):
+    """Schedule a proactive alert"""
+    try:
+        # Calculate trigger time (advance_days before the actual date)
+        trigger_time = alert_schedule.trigger_date - timedelta(days=alert_schedule.advance_days)
+        
+        if trigger_time <= datetime.utcnow():
+            # If trigger time is in the past, trigger immediately
+            alert_data = {
+                "user_id": current_user["id"],
+                "user_email": current_user.get("email"),
+                "alert_type": alert_schedule.alert_type,
+                "title": alert_schedule.title,
+                "description": alert_schedule.description,
+                "priority": alert_schedule.priority
+            }
+            trigger_proactive_alert(alert_data)
+            
+            return {
+                "success": True,
+                "message": "Alert triggered immediately (past due date)",
+                "triggered_at": datetime.utcnow().isoformat()
+            }
+        
+        # Schedule the alert
+        job_id = f"alert_{current_user['id']}_{int(trigger_time.timestamp())}"
+        
+        alert_data = {
+            "user_id": current_user["id"],
+            "user_email": current_user.get("email"),
+            "alert_type": alert_schedule.alert_type,
+            "title": alert_schedule.title,
+            "description": alert_schedule.description,
+            "priority": alert_schedule.priority
+        }
+        
+        if alert_schedule.recurrence:
+            # Schedule recurring alert
+            if alert_schedule.recurrence == "daily":
+                scheduler.add_job(
+                    trigger_proactive_alert,
+                    CronTrigger(hour=trigger_time.hour, minute=trigger_time.minute),
+                    args=[alert_data],
+                    id=job_id,
+                    replace_existing=True
+                )
+            elif alert_schedule.recurrence == "weekly":
+                scheduler.add_job(
+                    trigger_proactive_alert,
+                    CronTrigger(day_of_week=trigger_time.weekday(), hour=trigger_time.hour, minute=trigger_time.minute),
+                    args=[alert_data],
+                    id=job_id,
+                    replace_existing=True
+                )
+            elif alert_schedule.recurrence == "monthly":
+                scheduler.add_job(
+                    trigger_proactive_alert,
+                    CronTrigger(day=trigger_time.day, hour=trigger_time.hour, minute=trigger_time.minute),
+                    args=[alert_data],
+                    id=job_id,
+                    replace_existing=True
+                )
+        else:
+            # Schedule one-time alert
+            scheduler.add_job(
+                trigger_proactive_alert,
+                DateTrigger(run_date=trigger_time),
+                args=[alert_data],
+                id=job_id,
+                replace_existing=True
+            )
+        
+        # Store schedule in database
+        schedules_collection = db.alert_schedules
+        schedule_document = {
+            "user_id": current_user["id"],
+            "job_id": job_id,
+            "alert_type": alert_schedule.alert_type,
+            "title": alert_schedule.title,
+            "description": alert_schedule.description,
+            "trigger_date": alert_schedule.trigger_date,
+            "advance_days": alert_schedule.advance_days,
+            "recurrence": alert_schedule.recurrence,
+            "priority": alert_schedule.priority,
+            "enabled": alert_schedule.enabled,
+            "created_at": datetime.utcnow()
+        }
+        
+        result = schedules_collection.insert_one(schedule_document)
+        
+        return {
+            "success": True,
+            "message": "Proactive alert scheduled successfully",
+            "schedule_id": str(result.inserted_id),
+            "trigger_time": trigger_time.isoformat(),
+            "job_id": job_id
+        }
+        
+    except Exception as e:
+        print(f"❌ Error scheduling proactive alert: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error scheduling proactive alert: {str(e)}"
+        )
+
+@app.post("/automated-reports/schedule")
+async def schedule_automated_report(
+    report_schedule: ReportSchedule,
+    current_user: dict = Depends(get_current_user)
+):
+    """Schedule automated report generation"""
+    try:
+        job_id = f"report_{current_user['id']}_{report_schedule.report_type}_{int(datetime.utcnow().timestamp())}"
+        
+        report_config = {
+            "user_id": current_user["id"],
+            "report_type": report_schedule.report_type,
+            "title": report_schedule.title,
+            "recipients": report_schedule.recipients,
+            "include_charts": report_schedule.include_charts
+        }
+        
+        # Parse cron expression and schedule job
+        cron_parts = report_schedule.schedule_cron.split()
+        if len(cron_parts) == 5:
+            minute, hour, day, month, day_of_week = cron_parts
+            
+            scheduler.add_job(
+                generate_automated_report,
+                CronTrigger(
+                    minute=minute,
+                    hour=hour,
+                    day=day,
+                    month=month,
+                    day_of_week=day_of_week
+                ),
+                args=[report_config],
+                id=job_id,
+                replace_existing=True
+            )
+        else:
+            raise ValueError("Invalid cron expression. Expected format: 'minute hour day month day_of_week'")
+        
+        # Store schedule in database
+        report_schedules_collection = db.report_schedules
+        schedule_document = {
+            "user_id": current_user["id"],
+            "job_id": job_id,
+            "report_type": report_schedule.report_type,
+            "title": report_schedule.title,
+            "schedule_cron": report_schedule.schedule_cron,
+            "recipients": report_schedule.recipients,
+            "enabled": report_schedule.enabled,
+            "include_charts": report_schedule.include_charts,
+            "created_at": datetime.utcnow()
+        }
+        
+        result = report_schedules_collection.insert_one(schedule_document)
+        
+        return {
+            "success": True,
+            "message": "Automated report scheduled successfully",
+            "schedule_id": str(result.inserted_id),
+            "job_id": job_id,
+            "next_run": "Based on cron schedule"
+        }
+        
+    except Exception as e:
+        print(f"❌ Error scheduling automated report: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error scheduling automated report: {str(e)}"
+        )
+
+@app.get("/proactive-alerts")
+async def get_proactive_alerts(current_user: dict = Depends(get_current_user)):
+    """Get all proactive alerts for the current user"""
+    try:
+        alerts_collection = db.proactive_alerts
+        alerts = list(alerts_collection.find(
+            {"user_id": current_user["id"]},
+            {"_id": 0}
+        ).sort("triggered_at", -1).limit(50))
+        
+        return {
+            "success": True,
+            "alerts": alerts,
+            "count": len(alerts)
+        }
+        
+    except Exception as e:
+        print(f"❌ Error retrieving proactive alerts: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error retrieving proactive alerts: {str(e)}"
+        )
+
+@app.get("/alert-schedules")
+async def get_alert_schedules(current_user: dict = Depends(get_current_user)):
+    """Get all alert schedules for the current user"""
+    try:
+        schedules_collection = db.alert_schedules
+        schedules = list(schedules_collection.find(
+            {"user_id": current_user["id"]},
+            {"_id": 0}
+        ).sort("created_at", -1))
+        
+        return {
+            "success": True,
+            "schedules": schedules,
+            "count": len(schedules)
+        }
+        
+    except Exception as e:
+        print(f"❌ Error retrieving alert schedules: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error retrieving alert schedules: {str(e)}"
+        )
+
+@app.get("/automated-reports")
+async def get_automated_reports(current_user: dict = Depends(get_current_user)):
+    """Get all automated reports for the current user"""
+    try:
+        reports_collection = db.automated_reports
+        reports = list(reports_collection.find(
+            {"user_id": current_user["id"]},
+            {"_id": 0}
+        ).sort("generated_at", -1).limit(20))
+        
+        return {
+            "success": True,
+            "reports": reports,
+            "count": len(reports)
+        }
+        
+    except Exception as e:
+        print(f"❌ Error retrieving automated reports: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error retrieving automated reports: {str(e)}"
+        )
+
+@app.post("/proactive-alerts/trigger-now")
+async def trigger_alert_now(
+    alert_type: str,
+    title: str,
+    description: str,
+    priority: str = "medium",
+    current_user: dict = Depends(get_current_user)
+):
+    """Manually trigger a proactive alert immediately"""
+    try:
+        alert_data = {
+            "user_id": current_user["id"],
+            "user_email": current_user.get("email"),
+            "alert_type": alert_type,
+            "title": title,
+            "description": description,
+            "priority": priority
+        }
+        
+        success = trigger_proactive_alert(alert_data)
+        
+        if success:
+            return {
+                "success": True,
+                "message": "Alert triggered successfully",
+                "triggered_at": datetime.utcnow().isoformat()
+            }
+        else:
+            raise HTTPException(
+                status_code=500,
+                detail="Failed to trigger alert"
+            )
+            
+    except Exception as e:
+        print(f"❌ Error triggering alert: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error triggering alert: {str(e)}"
+        )
+
+@app.post("/automated-reports/generate-now")
+async def generate_report_now(
+    report_type: str,
+    title: str,
+    recipients: List[str] = [],
+    current_user: dict = Depends(get_current_user)
+):
+    """Manually generate an automated report immediately"""
+    try:
+        report_config = {
+            "user_id": current_user["id"],
+            "report_type": report_type,
+            "title": title,
+            "recipients": recipients,
+            "include_charts": True
+        }
+        
+        success = generate_automated_report(report_config)
+        
+        if success:
+            return {
+                "success": True,
+                "message": "Report generated successfully",
+                "generated_at": datetime.utcnow().isoformat()
+            }
+        else:
+            raise HTTPException(
+                status_code=500,
+                detail="Failed to generate report"
+            )
+            
+    except Exception as e:
+        print(f"❌ Error generating report: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error generating report: {str(e)}"
+        )
+
 @app.get("/carbon-analysis")
 def carbon_analysis():
-    return {
+{{ ... }}
         "analysis": {
             "total_emissions": 12345,
             "trend": "decreasing",
@@ -454,6 +925,115 @@ def carbon_analysis():
             ]
         }
     }
+
+@app.post("/regulatory-scanner/upload")
+async def upload_regulatory_data(
+    file: UploadFile = File(...),
+    current_user: dict = Depends(get_current_user)
+):
+    """Upload and store regulatory scanner CSV data in the database"""
+    try:
+        print(f"📤 Upload started by user: {current_user.get('email', 'Unknown')}")
+        print(f"📁 File: {file.filename}")
+        
+        # Read and parse CSV file
+        content = await file.read()
+        print(f"📊 File size: {len(content)} bytes")
+        
+        df = pd.read_csv(io.BytesIO(content))
+        print(f"📋 CSV columns: {list(df.columns)}")
+        print(f"📈 CSV rows: {len(df)}")
+        
+        # Convert DataFrame to list of dictionaries
+        regulatory_data = df.to_dict('records')
+        
+        # Create document to store in MongoDB
+        document = {
+            "user_id": current_user["id"],
+            "filename": file.filename,
+            "upload_date": datetime.utcnow(),
+            "data": regulatory_data,
+            "record_count": len(regulatory_data)
+        }
+        
+        print(f"💾 Storing document with {len(regulatory_data)} records...")
+        
+        # Store in MongoDB
+        regulatory_collection = db.regulatory_data
+        result = regulatory_collection.insert_one(document)
+        
+        print(f"✅ Successfully stored with ID: {result.inserted_id}")
+        
+        # Verify the data was stored
+        verification = regulatory_collection.find_one({"_id": result.inserted_id})
+        if verification:
+            print(f"✅ Verification successful: Document exists in database")
+        else:
+            print(f"❌ Verification failed: Document not found in database")
+        
+        return {
+            "success": True,
+            "message": f"Successfully uploaded {len(regulatory_data)} records",
+            "upload_id": str(result.inserted_id),
+            "data": regulatory_data
+        }
+        
+    except Exception as e:
+        print(f"❌ Upload error: {str(e)}")
+        import traceback
+        print(f"📋 Traceback: {traceback.format_exc()}")
+        raise HTTPException(
+            status_code=400,
+            detail=f"Error processing CSV file: {str(e)}"
+        )
+
+@app.get("/regulatory-scanner/data")
+async def get_regulatory_data(current_user: dict = Depends(get_current_user)):
+    """Get all regulatory data uploaded by the current user"""
+    try:
+        print(f"🔍 Data retrieval requested by user: {current_user.get('email', 'Unknown')}")
+        print(f"🆔 User ID: {current_user['id']}")
+        
+        regulatory_collection = db.regulatory_data
+        
+        # Check total documents in collection
+        total_docs = regulatory_collection.count_documents({})
+        print(f"📊 Total documents in regulatory_data collection: {total_docs}")
+        
+        # Check documents for this user
+        user_doc_count = regulatory_collection.count_documents({"user_id": current_user["id"]})
+        print(f"👤 Documents for this user: {user_doc_count}")
+        
+        user_data = list(regulatory_collection.find(
+            {"user_id": current_user["id"]},
+            {"_id": 0, "data": 1, "filename": 1, "upload_date": 1, "record_count": 1}
+        ).sort("upload_date", -1))
+        
+        print(f"📁 Found {len(user_data)} uploads for user")
+        
+        # Flatten all data from all uploads
+        all_data = []
+        for upload in user_data:
+            upload_records = upload.get("data", [])
+            all_data.extend(upload_records)
+            print(f"📄 Upload '{upload.get('filename', 'Unknown')}': {len(upload_records)} records")
+        
+        print(f"📊 Total flattened records: {len(all_data)}")
+        
+        return {
+            "success": True,
+            "data": all_data,
+            "uploads": user_data
+        }
+        
+    except Exception as e:
+        print(f"❌ Data retrieval error: {str(e)}")
+        import traceback
+        print(f"📋 Traceback: {traceback.format_exc()}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error retrieving regulatory data: {str(e)}"
+        )
 
 @app.get("/regulatory-scanner")
 def regulatory_scanner():
